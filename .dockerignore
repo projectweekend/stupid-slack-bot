@@ -1,0 +1,7 @@
+.drone.yml
+.drone.sec
+.git
+.gitignore
+Dockerfile
+README.md
+docker-compose.yml
