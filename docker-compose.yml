@@ -1,5 +1,5 @@
 bot:
     build: .
-    command: node main.js
+    command: node main.js -c ./test_config.json
     volumes:
         - .:/src/
