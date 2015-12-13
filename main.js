@@ -1,6 +1,8 @@
+var _ = require('lodash');
 var async = require('async');
-var request = require('request');
-var WebSocket = require('ws');
+var argv = require('minimist')(process.argv.slice(2));
+var config = require('./app/config');
+var ChannelTroll = require('./app/slack').ChannelTroll;
 
 
 if (require.main === module) {
@@ -9,48 +11,25 @@ if (require.main === module) {
 
 
 function main() {
-    var tasks = [getSocketURL, connectToSocket];
-    async.waterfall(tasks, function (err, socket) {
-        if (err) {
-            return console.log(err);
-        }
-        socket.on("open", function () {
-            console.log("socket connected");
-        });
-        socket.on("message", function (data, flags) {
-            console.log(data);
-        });
-    });
-}
-
-
-function getSocketURL(done) {
-    var token = process.env.SLACK_TOKEN;
-    if (!token) {
-        return done(new Error("Environment variable SLACK_TOKEN is undefined"));
+    var configFilePath = argv.c;
+    if (!configFilePath) {
+        console.log("Config file path must be provided with the -c argument");
+        process.exit(1);
     }
-    var config = {
-        url: "https://slack.com/api/rtm.start",
-        method: "GET",
-        qs: {
-            token: token
-        }
-    };
-    request(config, function(err, response, body) {
-        if (!err && response.statusCode == 200) {
-            var data = JSON.parse(body);
-            return done(null, data.url);
-        }
-        if (err) {
-            return done(err);
-        }
-        if (response.statusCode != 200) {
-            return done(new Error("Slack API call did not return a 200"));
-        }
+
+    var appConfig = config.fromFile(configFilePath);
+
+    var bot = new ChannelTroll(appConfig.token, appConfig.channel, appConfig.responses);
+
+    bot.on('error', function (err) {
+        console.log('Bot error!');
+        console.log(err);
+        process.exit(5);
     });
-}
 
+    bot.on('ready', function () {
+        console.log("Bot connected!");
+    });
 
-function connectToSocket(socketUrl, done) {
-    return done(null, new WebSocket(socketUrl));
+    bot.run();
 }
